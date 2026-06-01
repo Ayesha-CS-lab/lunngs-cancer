@@ -1,0 +1,65 @@
+# Lung Cancer AI - Gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+
+
+
+# Outputs
+outputs/*
+checkpoints/*
+experiments/*
+!outputs/.gitkeep
+!checkpoints/.gitkeep
+!experiments/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+wandb/
+tensorboard/
+
+# Environment
+.env
+.env.local
