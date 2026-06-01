@@ -70,7 +70,7 @@ class GradCAM:
         weights = gradients.mean(dim=(1, 2))  # [C]
         
         # Weighted combination of activation maps
-        cam = torch.zeros(activations.shape[1:], dtype=torch.float32)
+        cam = torch.zeros(activations.shape[1:], dtype=torch.float32, device=activations.device)
         for i, w in enumerate(weights):
             cam += w * activations[i]
         
@@ -131,7 +131,7 @@ def get_target_layer(model, model_name):
     if 'efficientnet' in model_name.lower():
         return model.backbone._conv_head
     elif 'densenet' in model_name.lower():
-        return model.backbone.features[-1]
+        return model.backbone.features.denseblock4
     elif 'resnet' in model_name.lower():
         return model.backbone.layer4[-1]
     else:
