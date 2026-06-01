@@ -6,7 +6,7 @@ The data pipeline and preprocessing modules have been fully implemented and are 
 
 ## ✅ Implemented Components
 
-### 1. **Preprocessing Module** ([src/preprocessing.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/preprocessing.py))
+### 1. **Preprocessing Module** ([src/preprocessing.py](file:///src/preprocessing.py))
 
 **Features:**
 
@@ -31,7 +31,7 @@ normalized = normalize_image(image)
 # Returns: numpy array with ImageNet normalization
 ```
 
-### 2. **Augmentation Module** ([src/augmentations.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/augmentations.py))
+### 2. **Augmentation Module** ([src/augmentations.py](file:///src/augmentations.py))
 
 **Features:**
 
@@ -63,7 +63,7 @@ val_transform = get_val_transforms(image_size=224)
 - Gaussian blur
 - Coarse dropout (cutout)
 
-### 3. **Dataset Module** ([src/datasets.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/datasets.py))
+### 3. **Dataset Module** ([src/datasets.py](file:///src/datasets.py))
 
 **Features:**
 
@@ -95,7 +95,7 @@ dataset = LungCancerDataset(
 )
 ```
 
-### 4. **Utilities** ([src/utils.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/utils.py))
+### 4. **Utilities** ([src/utils.py](file:///src/utils.py))
 
 **Features:**
 

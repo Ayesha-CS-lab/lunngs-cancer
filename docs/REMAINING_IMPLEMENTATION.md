@@ -230,7 +230,7 @@ gradcam_overlay, _, _ = visualize_gradcam(
 
 ### Fix 3.5 — Update Documentation Links
 
-Several documentation files reference the old path `C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/`. These should be updated to the current project path or use relative links.
+Several documentation files reference the old path ``. These should be updated to the current project path or use relative links.
 
 **Files affected:**
 - `DOCUMENTATION.md` (lines 740, 749, 763, 773, 1021–1023)
@@ -242,7 +242,7 @@ Several documentation files reference the old path `C:/Users/pc/.gemini/antigrav
 - `GRADCAM_GUIDE.md` (lines 11, 21)
 
 You can do a global find-and-replace:
-- **Find:** `C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/`
+- **Find:** ``
 - **Replace with:** (empty string, to use relative paths)
 
 Or replace with the correct absolute path:

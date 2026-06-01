@@ -178,7 +178,7 @@ class StackedEnsemble:
             for fold_idx, model_path in enumerate(self.trained_models[model_name]):
                 # Load model
                 model = get_model(model_name, num_classes=2, pretrained=False)
-                checkpoint = torch.load(model_path)
+                checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
                 model.load_state_dict(checkpoint['model_state_dict'])
                 
                 # Predict

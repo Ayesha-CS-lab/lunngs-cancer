@@ -32,6 +32,9 @@ wheels/
 
 
 
+# Data
+data/
+
 # Outputs
 
 checkpoints/*

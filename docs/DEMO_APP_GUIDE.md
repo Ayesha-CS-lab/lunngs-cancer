@@ -523,10 +523,10 @@ result_image, result_text = predict_ensemble(
 
 ## 📚 Additional Resources
 
-- **Main Project**: [README.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/README.md)
-- **Complete Guide**: [DOCUMENTATION.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/DOCUMENTATION.md)
-- **Grad-CAM Details**: [GRADCAM_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/GRADCAM_GUIDE.md)
-- **Model Training**: [CNN_TRAINING_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/CNN_TRAINING_GUIDE.md)
+- **Main Project**: [README.md](file:///README.md)
+- **Complete Guide**: [DOCUMENTATION.md](file:///DOCUMENTATION.md)
+- **Grad-CAM Details**: [GRADCAM_GUIDE.md](file:///GRADCAM_GUIDE.md)
+- **Model Training**: [CNN_TRAINING_GUIDE.md](file:///CNN_TRAINING_GUIDE.md)
 
 ---
 

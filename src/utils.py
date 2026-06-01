@@ -35,9 +35,11 @@ def save_checkpoint(model, optimizer, epoch, loss, path):
     print(f"Checkpoint saved to {path}")
 
 
-def load_checkpoint(model, optimizer, path):
+def load_checkpoint(model, optimizer, path, map_location=None):
     """Load model checkpoint."""
-    checkpoint = torch.load(path)
+    if map_location is None:
+        map_location = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    checkpoint = torch.load(path, map_location=map_location, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     if optimizer:
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

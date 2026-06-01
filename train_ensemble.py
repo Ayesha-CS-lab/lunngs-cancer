@@ -13,7 +13,7 @@ from src.utils import set_seed, ensure_dir, load_checkpoint
 from src.datasets import LungCancerDataset
 from src.augmentations import get_val_transforms
 from src.models import get_model
-from src.ensemble.meta_models import create_meta_learner
+from src.ensemble.meta_models import MetaLearner
 from src.evaluation import ModelEvaluator
 from torch.utils.data import DataLoader
 
@@ -111,7 +111,7 @@ print(f"\nMeta-features shape: {meta_features_train.shape}")
 # ---- Step 3: Train meta-learner ----
 print("\nStep 3: Training XGBoost meta-learner...")
 
-meta_learner = create_meta_learner("xgboost")
+meta_learner = MetaLearner("xgboost")
 meta_learner.fit(meta_features_train, train_labels)
 
 # Save meta-learner

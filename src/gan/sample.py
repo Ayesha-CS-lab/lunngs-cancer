@@ -24,7 +24,7 @@ def load_generator(checkpoint_path, device='cuda'):
     """Load trained generator from checkpoint."""
     print(f"Loading generator from: {checkpoint_path}")
     
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     config = checkpoint['config']
     
     generator = Generator(

@@ -8,7 +8,7 @@ The GAN (Generative Adversarial Network) module is fully implemented for generat
 
 ## ✅ Implemented Components
 
-### 1. **Generator** ([src/gan/generator.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/gan/generator.py))
+### 1. **Generator** ([src/gan/generator.py](file:///src/gan/generator.py))
 
 **Architecture:**
 
@@ -24,7 +24,7 @@ The GAN (Generative Adversarial Network) module is fully implemented for generat
 - Batch normalization for stability
 - Tanh activation for output
 
-### 2. **Discriminator** ([src/gan/discriminator.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/gan/discriminator.py))
+### 2. **Discriminator** ([src/gan/discriminator.py](file:///src/gan/discriminator.py))
 
 **Architecture:**
 
@@ -40,7 +40,7 @@ The GAN (Generative Adversarial Network) module is fully implemented for generat
 - Dropout for regularization
 - Sigmoid output (real/fake probability)
 
-### 3. **Training Script** ([src/gan/train_gan.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/gan/train_gan.py))
+### 3. **Training Script** ([src/gan/train_gan.py](file:///src/gan/train_gan.py))
 
 **Production-quality trainer with:**
 
@@ -51,7 +51,7 @@ The GAN (Generative Adversarial Network) module is fully implemented for generat
 - ✅ Best model saving
 - ✅ Training history logging
 
-### 4. **Sample Generator** ([src/gan/sample.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/gan/sample.py))
+### 4. **Sample Generator** ([src/gan/sample.py](file:///src/gan/sample.py))
 
 **Batch generation tool:**
 
@@ -60,7 +60,7 @@ The GAN (Generative Adversarial Network) module is fully implemented for generat
 - ✅ Save to specified directory
 - ✅ Ready for training use
 
-### 5. **Demo Script** ([demo_gan_training.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/demo_gan_training.py))
+### 5. **Demo Script** ([demo_gan_training.py](file:///demo_gan_training.py))
 
 **Interactive demonstration:**
 
@@ -515,7 +515,7 @@ fake = torch.zeros(batch_size, 1) + 0.1  # Instead of 0.0
 - ❌ Limited computational resources
 - ❌ Simple augmentations work well
 
-**Alternative:** Traditional augmentations (already in [src/augmentations.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/augmentations.py))
+**Alternative:** Traditional augmentations (already in [src/augmentations.py](file:///src/augmentations.py))
 
 ---
 

@@ -8,7 +8,7 @@ Grad-CAM (Gradient-weighted Class Activation Mapping) is fully implemented to pr
 
 ## ✅ Implemented Components
 
-### 1. **Grad-CAM Core** ([src/explainability/gradcam.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/explainability/gradcam.py))
+### 1. **Grad-CAM Core** ([src/explainability/gradcam.py](file:///src/explainability/gradcam.py))
 
 **Features:**
 
@@ -18,7 +18,7 @@ Grad-CAM (Gradient-weighted Class Activation Mapping) is fully implemented to pr
 - ✅ Heatmap overlay on original images
 - ✅ Batch processing support
 
-### 2. **Demo Script** ([demo_gradcam.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/demo_gradcam.py))
+### 2. **Demo Script** ([demo_gradcam.py](file:///demo_gradcam.py))
 
 **Demonstrations:**
 

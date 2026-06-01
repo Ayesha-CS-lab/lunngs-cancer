@@ -59,7 +59,7 @@ def load_model(model_name, device='cuda'):
     if not checkpoint_path.exists():
         checkpoint_path = Path(f'checkpoints/{model_name}_best.pth')
     if checkpoint_path.exists():
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
         print(f"✓ Loaded trained weights from {checkpoint_path}")
     else:

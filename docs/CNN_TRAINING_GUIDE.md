@@ -8,7 +8,7 @@ The base CNN models and training system are fully implemented with production-qu
 
 ## ✅ Implemented Components
 
-### 1. **Base Models** ([src/models/base_models.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/models/base_models.py))
+### 1. **Base Models** ([src/models/base_models.py](file:///src/models/base_models.py))
 
 **Three state-of-the-art architectures:**
 
@@ -25,7 +25,7 @@ The base CNN models and training system are fully implemented with production-qu
 - ✅ Custom classification heads
 - ✅ Dropout for regularization
 
-### 2. **Trainer** ([src/models/trainer.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/models/trainer.py))
+### 2. **Trainer** ([src/models/trainer.py](file:///src/models/trainer.py))
 
 **Production features:**
 
@@ -36,7 +36,7 @@ The base CNN models and training system are fully implemented with production-qu
 - ✅ **Checkpointing** - Save/resume training
 - ✅ **Progress Tracking** - Real-time metrics
 
-### 3. **Inference** ([src/models/inference.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/models/inference.py))
+### 3. **Inference** ([src/models/inference.py](file:///src/models/inference.py))
 
 **Prediction tools:**
 

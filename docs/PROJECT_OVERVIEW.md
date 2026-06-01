@@ -19,7 +19,7 @@ The Lung Cancer Detection AI system is **production-ready** with all core compon
   - Stratified K-fold splitting
   - Patient-level data management
 - **Demo:** `demo_data_pipeline.py`
-- **Guide:** [DATA_PIPELINE_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/DATA_PIPELINE_GUIDE.md)
+- **Guide:** [DATA_PIPELINE_GUIDE.md](file:///DATA_PIPELINE_GUIDE.md)
 
 ### ✅ 2. GAN Augmentation
 
@@ -31,7 +31,7 @@ The Lung Cancer Detection AI system is **production-ready** with all core compon
   - Batch synthetic image generation
   - Progress tracking & visualization
 - **Demo:** `demo_gan_training.py`
-- **Guide:** [GAN_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/GAN_GUIDE.md)
+- **Guide:** [GAN_GUIDE.md](file:///GAN_GUIDE.md)
 
 ### ✅ 3. Base CNN Models
 
@@ -46,7 +46,7 @@ The Lung Cancer Detection AI system is **production-ready** with all core compon
   - Learning rate scheduling
   - Early stopping
 - **Demo:** `demo_cnn_training.py`, `compare_models.py`
-- **Guide:** [CNN_TRAINING_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/CNN_TRAINING_GUIDE.md)
+- **Guide:** [CNN_TRAINING_GUIDE.md](file:///CNN_TRAINING_GUIDE.md)
 
 ### ✅ 4. Stacked Ensemble
 
@@ -59,7 +59,7 @@ The Lung Cancer Detection AI system is **production-ready** with all core compon
   - Ensemble training pipeline
   - Improved accuracy (+2-5%)
 - **Demo:** `demo_ensemble_stacking.py`
-- **Guide:** [ENSEMBLE_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/ENSEMBLE_GUIDE.md)
+- **Guide:** [ENSEMBLE_GUIDE.md](file:///ENSEMBLE_GUIDE.md)
 
 ### ✅ 5. Grad-CAM Explainability
 
@@ -72,7 +72,7 @@ The Lung Cancer Detection AI system is **production-ready** with all core compon
   - Batch processing
   - Clinical interpretation support
 - **Demo:** `demo_gradcam.py`
-- **Guide:** [GRADCAM_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/GRADCAM_GUIDE.md)
+- **Guide:** [GRADCAM_GUIDE.md](file:///GRADCAM_GUIDE.md)
 
 ### ✅ 6. Evaluation System
 
@@ -245,15 +245,15 @@ lung_cancer_ai/
 
 | Document                                                                                                        | Purpose                  | Target Audience          |
 | --------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------ |
-| [README.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/README.md)                           | Project overview & setup | Everyone                 |
-| [QUICKSTART.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/QUICKSTART.md)                   | Rapid onboarding         | Beginners                |
-| [DOCUMENTATION.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/DOCUMENTATION.md)             | Complete system guide    | All users                |
-| [ARCHITECTURE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/ARCHITECTURE.md)               | Visual diagrams          | Developers               |
-| [DATA_PIPELINE_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/DATA_PIPELINE_GUIDE.md) | Data preprocessing       | Data engineers           |
-| [GAN_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/GAN_GUIDE.md)                     | Data augmentation        | ML engineers             |
-| [CNN_TRAINING_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/CNN_TRAINING_GUIDE.md)   | Model training           | ML engineers             |
-| [ENSEMBLE_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/ENSEMBLE_GUIDE.md)           | Ensemble learning        | Advanced users           |
-| [GRADCAM_GUIDE.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/GRADCAM_GUIDE.md)             | Explainability           | Clinicians & researchers |
+| [README.md](file:///README.md)                           | Project overview & setup | Everyone                 |
+| [QUICKSTART.md](file:///QUICKSTART.md)                   | Rapid onboarding         | Beginners                |
+| [DOCUMENTATION.md](file:///DOCUMENTATION.md)             | Complete system guide    | All users                |
+| [ARCHITECTURE.md](file:///ARCHITECTURE.md)               | Visual diagrams          | Developers               |
+| [DATA_PIPELINE_GUIDE.md](file:///DATA_PIPELINE_GUIDE.md) | Data preprocessing       | Data engineers           |
+| [GAN_GUIDE.md](file:///GAN_GUIDE.md)                     | Data augmentation        | ML engineers             |
+| [CNN_TRAINING_GUIDE.md](file:///CNN_TRAINING_GUIDE.md)   | Model training           | ML engineers             |
+| [ENSEMBLE_GUIDE.md](file:///ENSEMBLE_GUIDE.md)           | Ensemble learning        | Advanced users           |
+| [GRADCAM_GUIDE.md](file:///GRADCAM_GUIDE.md)             | Explainability           | Clinicians & researchers |
 
 ---
 
@@ -383,10 +383,10 @@ CLASS_WEIGHTS = [1.0, 3.0]
 
 ### Beginner Track
 
-1. Read [QUICKSTART.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/QUICKSTART.md)
+1. Read [QUICKSTART.md](file:///QUICKSTART.md)
 2. Run `setup_check.py`
 3. Run all demo scripts
-4. Explore [DOCUMENTATION.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/DOCUMENTATION.md)
+4. Explore [DOCUMENTATION.md](file:///DOCUMENTATION.md)
 
 ### Intermediate Track
 

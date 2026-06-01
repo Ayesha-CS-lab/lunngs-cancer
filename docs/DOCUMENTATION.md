@@ -737,7 +737,7 @@ lung_cancer_ai/
 
 ### Key Files Explained
 
-**[configs/config.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/configs/config.py)**
+**[configs/config.py](file:///configs/config.py)**
 
 ```python
 # Central configuration - change settings here
@@ -746,7 +746,7 @@ BATCH_SIZE = 32      # Images per batch
 LEARNING_RATE = 1e-4 # Learning speed
 ```
 
-**[src/models/base_models.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/models/base_models.py)**
+**[src/models/base_models.py](file:///src/models/base_models.py)**
 
 ```python
 # Defines CNN architectures
@@ -760,7 +760,7 @@ class ResNetModel(nn.Module):
     # ResNet implementation
 ```
 
-**[src/models/trainer.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/models/trainer.py)**
+**[src/models/trainer.py](file:///src/models/trainer.py)**
 
 ```python
 # Training loop with:
@@ -770,7 +770,7 @@ class ResNetModel(nn.Module):
 # - Learning rate scheduling
 ```
 
-**[src/explainability/gradcam.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/explainability/gradcam.py)**
+**[src/explainability/gradcam.py](file:///src/explainability/gradcam.py)**
 
 ```python
 # Grad-CAM implementation
@@ -1018,8 +1018,8 @@ python -m src.gan.sample
 
 ## 📞 Need Help?
 
-1. **Check** [README.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/README.md) - Project overview
-2. **Check** [QUICKSTART.md](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/QUICKSTART.md) - Fast setup guide
+1. **Check** [README.md](file:///README.md) - Project overview
+2. **Check** [QUICKSTART.md](file:///QUICKSTART.md) - Fast setup guide
 3. **Check** this documentation - Detailed explanations
 4. **Review** code comments - Inline documentation
 5. **Open** GitHub issue - For bugs/questions

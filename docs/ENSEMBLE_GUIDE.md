@@ -8,7 +8,7 @@ The stacked ensemble system is fully implemented, combining predictions from mul
 
 ## ✅ Implemented Components
 
-### 1. **Stacked Ensemble** ([src/ensemble/stacking.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/ensemble/stacking.py))
+### 1. **Stacked Ensemble** ([src/ensemble/stacking.py](file:///src/ensemble/stacking.py))
 
 **Core functionality:**
 
@@ -18,7 +18,7 @@ The stacked ensemble system is fully implemented, combining predictions from mul
 - ✅ Ensemble training pipeline
 - ✅ Ensemble inference
 
-### 2. **Meta-Learners** ([src/ensemble/meta_models.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/src/ensemble/meta_models.py))
+### 2. **Meta-Learners** ([src/ensemble/meta_models.py](file:///src/ensemble/meta_models.py))
 
 **Three options:**
 
@@ -28,7 +28,7 @@ The stacked ensemble system is fully implemented, combining predictions from mul
 | **Random Forest**       | ⚡⚡⚡ Fastest | ⭐⭐⭐⭐ Good   | ⭐⭐⭐⭐ Good    | Stable          |
 | **Logistic Regression** | ⚡⚡⚡ Fastest | ⭐⭐⭐ Fair     | ⭐⭐⭐⭐⭐ Best  | Simple baseline |
 
-### 3. **Demo Script** ([demo_ensemble_stacking.py](file:///C:/Users/pc/.gemini/antigravity/scratch/lung_cancer_ai/demo_ensemble_stacking.py))
+### 3. **Demo Script** ([demo_ensemble_stacking.py](file:///demo_ensemble_stacking.py))
 
 **Complete workflow demonstration:**
 

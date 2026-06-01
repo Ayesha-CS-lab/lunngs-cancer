@@ -55,9 +55,9 @@ class DenseNetModel(nn.Module):
         
         # Load pretrained model
         if model_name == 'densenet121':
-            self.backbone = models.densenet121(pretrained=pretrained)
+            self.backbone = models.densenet121(weights=models.DenseNet121_Weights.IMAGENET1K_V1 if pretrained else None)
         elif model_name == 'densenet169':
-            self.backbone = models.densenet169(pretrained=pretrained)
+            self.backbone = models.densenet169(weights=models.DenseNet169_Weights.IMAGENET1K_V1 if pretrained else None)
         else:
             raise ValueError(f"Unknown model: {model_name}")
         
@@ -97,9 +97,9 @@ class ResNetModel(nn.Module):
         
         # Load pretrained model
         if model_name == 'resnet50':
-            self.backbone = models.resnet50(pretrained=pretrained)
+            self.backbone = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1 if pretrained else None)
         elif model_name == 'resnet101':
-            self.backbone = models.resnet101(pretrained=pretrained)
+            self.backbone = models.resnet101(weights=models.ResNet101_Weights.IMAGENET1K_V1 if pretrained else None)
         else:
             raise ValueError(f"Unknown model: {model_name}")
         
