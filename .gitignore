@@ -33,7 +33,7 @@ wheels/
 
 
 # Outputs
-outputs/*
+
 checkpoints/*
 experiments/*
 !outputs/.gitkeep
