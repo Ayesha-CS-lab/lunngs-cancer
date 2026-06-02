@@ -61,9 +61,9 @@ def load_model(model_name, device='cuda'):
     if checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"✓ Loaded trained weights from {checkpoint_path}")
+        print(f"[OK] Loaded trained weights from {checkpoint_path}")
     else:
-        print(f"⚠ Using pretrained ImageNet weights (no trained checkpoint found)")
+        print(f"[!] Using pretrained ImageNet weights (no trained checkpoint found)")
     
     model.eval()
     MODEL_CACHE[model_name] = model
@@ -531,16 +531,16 @@ def main():
     print(f"Device: {device}")
     
     if device == 'cpu':
-        print("⚠️  Running on CPU - predictions will be slower")
+        print("WARNING: Running on CPU - predictions will be slower")
         print("   For faster performance, use a CUDA-enabled GPU")
-    
+
     # Create demo
     print("\nCreating Gradio interface...")
     demo = create_demo_interface()
-    
+
     # Launch
     print("\n" + "="*70)
-    print("🚀 LAUNCHING APPLICATION")
+    print("LAUNCHING APPLICATION")
     print("="*70)
     print("\nThe app will open in your default browser.")
     print("If it doesn't open automatically, navigate to: http://localhost:7860")
@@ -548,9 +548,9 @@ def main():
     print("="*70 + "\n")
     
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,  # Set to True to create public link
+        server_name="127.0.0.1",
+        server_port=7861,
+        share=False,
         show_error=True
     )
 
