@@ -1,7 +1,19 @@
 """
 Train the stacked ensemble using all 3 base models.
-Generates base model predictions and trains XGBoost meta-learner.
+
+FIX: Meta-learner is trained on VALIDATION set predictions (not training set)
+to prevent data leakage. Base models have memorized the training set, so
+using training predictions gave artificially perfect 100% results.
+
+Supports both datasets via command-line arguments:
+    python train_ensemble.py                          # IQ-OTH/NCCD (default)
+    python train_ensemble.py \\
+        --val-dir  data/lidc_idri/val  \\
+        --test-dir data/lidc_idri/test \\
+        --checkpoint-dir checkpoints/lidc_idri \\
+        --output-dir outputs/lidc_idri
 """
+import argparse
 import torch
 import numpy as np
 import joblib
@@ -17,65 +29,89 @@ from src.ensemble.meta_models import MetaLearner
 from src.evaluation import ModelEvaluator
 from torch.utils.data import DataLoader
 
-set_seed(42)
+parser = argparse.ArgumentParser(description="Train stacked ensemble")
+parser.add_argument("--train-dir",      type=str, default="data/kaggle_lung_cancer/train")
+parser.add_argument("--val-dir",        type=str, default="data/kaggle_lung_cancer/val")
+parser.add_argument("--test-dir",       type=str, default="data/kaggle_lung_cancer/test")
+parser.add_argument("--checkpoint-dir", type=str, default="checkpoints",
+                    help="Directory that contains efficientnet/densenet/resnet checkpoints")
+parser.add_argument("--output-dir",     type=str, default="outputs/test_evaluation",
+                    help="Directory for evaluation plots")
+parser.add_argument("--seed",           type=int, default=42)
+args = parser.parse_args()
 
-DATA_DIR = "data/kaggle_lung_cancer/train"
-TEST_DIR = "data/kaggle_lung_cancer/test"
+set_seed(args.seed)
+
+TRAIN_DIR = args.train_dir
+VAL_DIR   = args.val_dir
+TEST_DIR  = args.test_dir
+CKPT_DIR  = args.checkpoint_dir
+OUT_DIR   = args.output_dir
 
 print("=" * 70)
 print("STACKED ENSEMBLE TRAINING")
 print("=" * 70)
 
-# ---- Step 1: Load all training image paths and labels ----
-print("\nStep 1: Loading training data...")
-train_dir = Path(DATA_DIR)
-train_images = []
-train_labels = []
+# ---- Step 1: Show dataset statistics ----
+print("\nStep 1: Dataset overview...")
+for split_name, split_dir in [("Train", TRAIN_DIR), ("Val", VAL_DIR), ("Test", TEST_DIR)]:
+    no_c = len(list((Path(split_dir) / "no_cancer").glob("*"))) if (Path(split_dir) / "no_cancer").exists() else 0
+    can  = len(list((Path(split_dir) / "cancer").glob("*")))    if (Path(split_dir) / "cancer").exists() else 0
+    print(f"  {split_name}: no_cancer={no_c}, cancer={can}, total={no_c + can}")
+
+# ---- Step 2: Load validation images (meta-learner training data) ----
+print("\nStep 2: Loading validation set for meta-learner training...")
+val_dir = Path(VAL_DIR)
+val_images = []
+val_labels_meta = []
 
 for class_idx, class_name in enumerate(["no_cancer", "cancer"]):
-    class_dir = train_dir / class_name
+    class_dir = val_dir / class_name
     if class_dir.exists():
         for img_path in sorted(class_dir.glob("*")):
             if img_path.suffix.lower() in [".png", ".jpg", ".jpeg"]:
-                train_images.append(str(img_path))
-                train_labels.append(class_idx)
+                val_images.append(str(img_path))
+                val_labels_meta.append(class_idx)
 
-train_images = np.array(train_images)
-train_labels = np.array(train_labels)
-print(f"  Total training images: {len(train_images)}")
-print(f"  No Cancer: {(train_labels == 0).sum()}, Cancer: {(train_labels == 1).sum()}")
+val_labels_meta = np.array(val_labels_meta)
+print(f"  Validation images: {len(val_images)}")
+print(f"  No Cancer: {(val_labels_meta == 0).sum()}, Cancer: {(val_labels_meta == 1).sum()}")
 
-# ---- Step 2: Generate base model predictions on training data ----
-print("\nStep 2: Generating base model predictions...")
-
+# ---- Step 3: Check base model checkpoints ----
 model_names = ["efficientnet", "densenet", "resnet"]
 checkpoint_paths = {
-    "efficientnet": "checkpoints/efficientnet_finetuned_best.pth",
-    "densenet": "checkpoints/densenet_finetuned_best.pth",
-    "resnet": "checkpoints/resnet_finetuned_best.pth",
+    "efficientnet": f"{CKPT_DIR}/efficientnet_finetuned_best.pth",
+    "densenet":     f"{CKPT_DIR}/densenet_finetuned_best.pth",
+    "resnet":       f"{CKPT_DIR}/resnet_finetuned_best.pth",
 }
 
-# Check all checkpoints exist
+print("\nStep 3: Checking base model checkpoints...")
 missing = False
 for name, path in checkpoint_paths.items():
     if not Path(path).exists():
-        print(f"  ❌ ERROR: {path} not found! Train {name} first.")
+        print(f"  ERROR: {path} not found! Train {name} first.")
         missing = True
     else:
-        print(f"  ✓ Found: {path}")
+        print(f"  Found: {path}")
 
 if missing:
-    print("\n❌ Cannot train ensemble — missing base model checkpoints.")
-    print("   Run the following commands first:")
-    print("   python train.py --model densenet --epochs 50 --data-dir data/kaggle_lung_cancer")
-    print("   python train.py --model resnet --epochs 50 --data-dir data/kaggle_lung_cancer")
+    print("\nCannot train ensemble — missing base model checkpoints.")
+    print("Run these commands first:")
+    for name in model_names:
+        print(f"  python train.py --model {name} --epochs 50 --data-dir data/kaggle_lung_cancer")
     exit(1)
 
 device = DEVICE
 val_transform = get_val_transforms(IMAGE_SIZE)
 
-# Get predictions from each model on training data
-all_train_probs = []
+# ---- Step 4: Get base model predictions on VALIDATION set ----
+#
+# This is the key fix: we predict on the validation set (data the base models
+# have NOT been trained on) so the meta-learner learns from genuinely
+# unseen signal, not memorized training patterns.
+#
+print("\nStep 4: Generating base model predictions on validation set...")
+all_val_probs = []
 
 for model_name in model_names:
     print(f"\n  Getting predictions from {model_name}...")
@@ -85,42 +121,42 @@ for model_name in model_names:
     model.eval()
 
     dataset = LungCancerDataset(
-        image_paths=train_images.tolist(),
-        labels=train_labels.tolist(),
+        image_paths=val_images,
+        labels=val_labels_meta.tolist(),
         transform=val_transform
     )
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     model_probs = []
     with torch.no_grad():
-        for images, labels in tqdm(loader, desc=f"  {model_name}"):
+        for images, _ in tqdm(loader, desc=f"  {model_name}"):
             images = images.to(device)
             outputs = model(images)
             probs = torch.softmax(outputs, dim=1).cpu().numpy()
             model_probs.append(probs)
 
     model_probs = np.concatenate(model_probs, axis=0)
-    all_train_probs.append(model_probs)
-    print(f"  {model_name}: {model_probs.shape}")
+    all_val_probs.append(model_probs)
+    val_acc = np.mean(np.argmax(model_probs, axis=1) == val_labels_meta) * 100
+    print(f"  {model_name} validation accuracy: {val_acc:.2f}%")
 
-# Stack all predictions as meta-features
-# Shape: (num_samples, num_models * num_classes) = (767, 6)
-meta_features_train = np.hstack(all_train_probs)
-print(f"\nMeta-features shape: {meta_features_train.shape}")
+# Stack predictions: shape (num_val_samples, num_models * num_classes) = (164, 6)
+meta_features_val = np.hstack(all_val_probs)
+print(f"\nMeta-features shape: {meta_features_val.shape}")
 
-# ---- Step 3: Train meta-learner ----
-print("\nStep 3: Training XGBoost meta-learner...")
-
+# ---- Step 5: Train meta-learner on validation predictions ----
+print("\nStep 5: Training XGBoost meta-learner on validation predictions...")
 meta_learner = MetaLearner("xgboost")
-meta_learner.fit(meta_features_train, train_labels)
+meta_learner.fit(meta_features_val, val_labels_meta)
 
-# Save meta-learner
-ensure_dir("checkpoints/ensemble")
-joblib.dump(meta_learner, "checkpoints/ensemble/meta_learner_xgboost.pkl")
-print("  ✓ Meta-learner saved to: checkpoints/ensemble/meta_learner_xgboost.pkl")
+ensemble_ckpt_dir = f"{CKPT_DIR}/ensemble"
+ensure_dir(ensemble_ckpt_dir)
+meta_path = f"{ensemble_ckpt_dir}/meta_learner_xgboost.pkl"
+joblib.dump(meta_learner, meta_path)
+print(f"  Meta-learner saved to: {meta_path}")
 
-# ---- Step 4: Evaluate ensemble on test set ----
-print("\nStep 4: Evaluating ensemble on test set...")
+# ---- Step 6: Evaluate ensemble on held-out test set ----
+print("\nStep 6: Evaluating ensemble on test set...")
 
 test_dir_path = Path(TEST_DIR)
 test_images_list = []
@@ -137,8 +173,8 @@ for class_idx, class_name in enumerate(["no_cancer", "cancer"]):
 test_labels_arr = np.array(test_labels_list)
 print(f"  Test set: {len(test_images_list)} images")
 
-# Get base model predictions on test set
 all_test_probs = []
+individual_results = {}
 
 for model_name in model_names:
     print(f"  Getting test predictions from {model_name}...")
@@ -156,7 +192,7 @@ for model_name in model_names:
 
     model_probs = []
     with torch.no_grad():
-        for images, labels in tqdm(loader, desc=f"  {model_name}"):
+        for images, _ in tqdm(loader, desc=f"  {model_name}"):
             images = images.to(device)
             outputs = model(images)
             probs = torch.softmax(outputs, dim=1).cpu().numpy()
@@ -165,30 +201,25 @@ for model_name in model_names:
     model_probs = np.concatenate(model_probs, axis=0)
     all_test_probs.append(model_probs)
 
-meta_features_test = np.hstack(all_test_probs)
+    preds = np.argmax(model_probs, axis=1)
+    evaluator = ModelEvaluator(test_labels_arr, preds, model_probs)
+    individual_results[model_name] = evaluator.calculate_metrics()
 
-# Ensemble prediction
+meta_features_test = np.hstack(all_test_probs)
 ensemble_preds = meta_learner.predict(meta_features_test)
 ensemble_proba = meta_learner.predict_proba(meta_features_test)
 
-# Also get individual model predictions for comparison
-individual_results = {}
-for i, model_name in enumerate(model_names):
-    preds = np.argmax(all_test_probs[i], axis=1)
-    evaluator = ModelEvaluator(test_labels_arr, preds, all_test_probs[i])
-    individual_results[model_name] = evaluator.calculate_metrics()
-
-# Ensemble evaluation
 print(f"\n{'=' * 70}")
 print("ENSEMBLE EVALUATION ON TEST SET")
 print(f"{'=' * 70}")
 
 ensemble_evaluator = ModelEvaluator(test_labels_arr, ensemble_preds, ensemble_proba)
 ensemble_metrics = ensemble_evaluator.print_report()
-ensure_dir("outputs/test_evaluation/ensemble")
-ensemble_evaluator.save_all_plots("outputs/test_evaluation/ensemble")
+ensemble_out = f"{OUT_DIR}/ensemble"
+ensure_dir(ensemble_out)
+ensemble_evaluator.save_all_plots(ensemble_out)
 
-# ---- Step 5: Print comparison ----
+# ---- Step 7: Final comparison table ----
 print("\n" + "=" * 70)
 print("FINAL COMPARISON — TEST SET")
 print("=" * 70)
@@ -210,11 +241,10 @@ print(f"{'ENSEMBLE (XGB)':<18} "
       f"{ensemble_metrics['f1']:<12.4f} "
       f"{ensemble_metrics.get('roc_auc', 0):<12.4f}")
 
-# Improvement
 best_individual_acc = max(m['accuracy'] for m in individual_results.values())
 improvement = (ensemble_metrics['accuracy'] - best_individual_acc) * 100
-print(f"\n{'Ensemble improvement over best model:':<40} {improvement:+.2f}%")
+print(f"\n{'Ensemble improvement over best individual model:':<48} {improvement:+.2f}%")
 
-print("\n✓ Ensemble training and evaluation complete!")
-print("✓ Meta-learner saved to: checkpoints/ensemble/meta_learner_xgboost.pkl")
-print("✓ Results saved to: outputs/test_evaluation/ensemble/")
+print("\nEnsemble training and evaluation complete!")
+print(f"Meta-learner saved to: {meta_path}")
+print(f"Results saved to: {ensemble_out}/")
