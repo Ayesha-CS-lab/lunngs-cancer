@@ -129,7 +129,7 @@ def get_target_layer(model, model_name):
         Target layer
     """
     if 'efficientnet' in model_name.lower():
-        return model.backbone._conv_head
+        return model.backbone.conv_head  # timm uses conv_head (no underscore)
     elif 'densenet' in model_name.lower():
         return model.backbone.features.denseblock4
     elif 'resnet' in model_name.lower():

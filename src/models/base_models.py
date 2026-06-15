@@ -4,46 +4,38 @@ Base deep learning models with transfer learning.
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from efficientnet_pytorch import EfficientNet
+import timm
 
 
 class EfficientNetModel(nn.Module):
     """EfficientNet-based classifier."""
-    
-    def __init__(self, model_name='efficientnet-b0', num_classes=2, pretrained=True):
+
+    def __init__(self, model_name='efficientnet_b0', num_classes=2, pretrained=True):
         super(EfficientNetModel, self).__init__()
-        
-        if pretrained:
-            self.backbone = EfficientNet.from_pretrained(model_name)
-        else:
-            self.backbone = EfficientNet.from_name(model_name)
-        
-        # Get number of features
-        num_ftrs = self.backbone._fc.in_features
-        
-        # Replace classifier
-        self.backbone._fc = nn.Sequential(
+        # timm is pre-installed on Kaggle; num_classes=0 removes the built-in head
+        self.backbone = timm.create_model(model_name, pretrained=pretrained, num_classes=0)
+        num_ftrs = self.backbone.num_features
+        self.classifier = nn.Sequential(
             nn.Dropout(0.3),
             nn.Linear(num_ftrs, 512),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(512, num_classes)
         )
-    
+
     def forward(self, x):
-        return self.backbone(x)
-    
+        return self.classifier(self.backbone(x))
+
     def freeze_backbone(self):
         """Freeze backbone weights for transfer learning."""
         for param in self.backbone.parameters():
             param.requires_grad = False
-        # Unfreeze classifier
-        for param in self.backbone._fc.parameters():
+        for param in self.classifier.parameters():
             param.requires_grad = True
-    
+
     def unfreeze_backbone(self):
         """Unfreeze all weights for fine-tuning."""
-        for param in self.backbone.parameters():
+        for param in self.parameters():
             param.requires_grad = True
 
 
