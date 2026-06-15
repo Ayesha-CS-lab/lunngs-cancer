@@ -47,8 +47,9 @@ experiments/*
 .ipynb_checkpoints/
 *.ipynb
 
-# IDE
+# IDE - never commit editor config (prevents malicious task injection)
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
