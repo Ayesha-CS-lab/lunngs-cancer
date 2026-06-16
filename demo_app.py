@@ -47,9 +47,9 @@ def load_model(model_name, device='cuda'):
         device = 'cpu'
     
     model = ModelFactory.create_model(
-        model_name=model_name,
+        model_type=model_name,
         num_classes=NUM_CLASSES,
-        pretrained=True
+        pretrained=False
     ).to(device)
     
     # Try to load trained weights if available

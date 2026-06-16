@@ -1,0 +1,23 @@
+CROSS-DATASET COMPARISON SUMMARY
+============================================================
+
+Datasets:
+  IQ-OTH/NCCD — Iraqi-Oncology-Teaching-Hospital / NCI dataset
+              — Clean, well-structured CT scan images
+  LIDC-IDRI   — Lung Image Database Consortium
+              — Larger, more diverse, community-annotated
+
+Models compared: EfficientNet-B0, DenseNet-121, ResNet-50, Ensemble
+
+Results (Accuracy / ROC AUC):
+  EfficientNet-B0        IQ-OTH: 100.0% / 100.0%  |  LIDC: 68.7% / 78.8%
+  DenseNet-121           IQ-OTH: 100.0% / 100.0%  |  LIDC: 82.0% / 91.9%
+  ResNet-50              IQ-OTH: 100.0% / 100.0%  |  LIDC: 85.7% / 90.9%
+  Ensemble (XGBoost)     IQ-OTH: 98.8% / 100.0%  |  LIDC: 84.0% / 92.2%
+
+Interpretation:
+  - If LIDC-IDRI accuracy is lower, it confirms better generalisation
+    challenge — the model is not over-fitting to one dataset.
+  - The Ensemble should outperform individual models on both datasets.
+  - If IQ-OTH scores are still near-perfect, consider increasing
+    regularisation or using cross-dataset validation.
