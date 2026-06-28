@@ -34,6 +34,24 @@ from src.utils import ensure_dir
 
 # Global cache for loaded models
 MODEL_CACHE = {}
+META_LEARNER_CACHE = {}
+
+
+def load_meta_learner(checkpoint_dir='checkpoints'):
+    """Load the trained XGBoost stacking meta-learner (same one reported in RESULTS.md)."""
+    if checkpoint_dir in META_LEARNER_CACHE:
+        return META_LEARNER_CACHE[checkpoint_dir]
+
+    meta_path = Path(f'{checkpoint_dir}/ensemble/meta_learner_xgboost.pkl')
+    if not meta_path.exists():
+        print(f"[!] No trained meta-learner found at {meta_path}, falling back to probability averaging")
+        META_LEARNER_CACHE[checkpoint_dir] = None
+        return None
+
+    meta_learner = joblib.load(meta_path)
+    print(f"[OK] Loaded trained XGBoost meta-learner from {meta_path}")
+    META_LEARNER_CACHE[checkpoint_dir] = meta_learner
+    return meta_learner
 
 
 def load_model(model_name, device='cuda'):
@@ -177,8 +195,18 @@ def predict_ensemble(image, show_gradcam=True, device='cuda'):
                 probabilities = torch.softmax(outputs, dim=1)
                 all_probs.append(probabilities[0].cpu().numpy())
         
-        # Average probabilities
-        avg_probs = np.mean(all_probs, axis=0)
+        # Use the real trained XGBoost stacking meta-learner (same model reported
+        # in RESULTS.md), falling back to probability averaging only if it's missing.
+        meta_learner = load_meta_learner()
+        meta_features = np.hstack(all_probs).reshape(1, -1)  # order: efficientnet, densenet, resnet
+
+        if meta_learner is not None:
+            avg_probs = meta_learner.predict_proba(meta_features)[0]
+            ensemble_method = "Stacked Ensemble (trained XGBoost meta-learner)"
+        else:
+            avg_probs = np.mean(all_probs, axis=0)
+            ensemble_method = "Probability Averaging (fallback — no trained meta-learner found)"
+
         pred_class = np.argmax(avg_probs)
         confidence = avg_probs[pred_class]
         
@@ -206,7 +234,7 @@ def predict_ensemble(image, show_gradcam=True, device='cuda'):
         prob_text = f"""
 ### Ensemble Prediction
 
-**Model:** STACKED ENSEMBLE (EfficientNet + DenseNet + ResNet)
+**Model:** {ensemble_method}
 
 **Diagnosis:** {result_class}
 
@@ -278,43 +306,135 @@ def analyze_image(image, model_choice, show_gradcam):
 def create_demo_interface():
     """Create the Gradio interface."""
     
-    # Custom CSS for professional medical UI
+    # Minimalist light UI
     custom_css = """
-    .gradio-container {
+    :root, .gradio-container { color-scheme: light !important; }
+    body, .gradio-container {
+        background: #ffffff !important;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1400px !important;
+        max-width: 1300px !important;
+        color: #1f2937 !important;
     }
-    .gr-button-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    .gr-box, .block, .form, .panel {
+        background: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        box-shadow: none !important;
+    }
+    .gr-button-primary, button.primary {
+        background: #10b981 !important;
+        color: #ffffff !important;
         border: none !important;
+        border-radius: 6px !important;
+        box-shadow: none !important;
     }
-    .gr-button-secondary {
-        background: #f3f4f6 !important;
+    .gr-button-primary:hover, button.primary:hover {
+        background: #059669 !important;
+    }
+    .gr-button-secondary, button.secondary {
+        background: #ffffff !important;
         color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+    }
+    h1, h2, h3 {
+        color: #111827 !important;
+        font-weight: 600 !important;
     }
     h1 {
         text-align: center;
-        color: #1f2937;
-        font-size: 2.5rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 0.5rem !important;
+        font-size: 1.8rem !important;
+        margin-bottom: 0.25rem !important;
     }
     .subtitle {
         text-align: center;
         color: #6b7280;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
     }
     .warning-box {
-        background: #fef3c7;
-        border-left: 4px solid #f59e0b;
-        padding: 1rem;
+        background: #fafafa;
+        border: 1px solid #e5e7eb;
+        border-left: 3px solid #f59e0b;
+        padding: 0.75rem 1rem;
         margin: 1rem 0;
-        border-radius: 0.5rem;
+        border-radius: 6px;
+        color: #4b5563;
+        font-size: 0.9rem;
+    }
+    .phase-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin: 1.5rem 0 2rem 0;
+    }
+    .phase-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1.1rem 1rem;
+        text-align: center;
+    }
+    .phase-card .phase-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        color: #4b5563;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .phase-card .phase-title {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+    .phase-card .phase-desc {
+        color: #6b7280;
+        font-size: 0.8rem;
+        line-height: 1.3;
+    }
+    .phase-card.highlight {
+        background: #ecfdf5;
+        border: 1.5px solid #10b981;
+    }
+    .phase-card.highlight .phase-num {
+        background: #10b981;
+        color: #ffffff;
+    }
+    .phase-card.highlight .phase-title {
+        color: #047857;
+    }
+    .core-badge {
+        display: inline-block;
+        background: #10b981;
+        color: #ffffff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        margin-top: 0.4rem;
     }
     """
-    
-    with gr.Blocks(css=custom_css, title="Lung Cancer Detection AI") as demo:
+
+    force_light_js = """
+    () => {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+    }
+    """
+
+    with gr.Blocks(
+        css=custom_css,
+        title="Lung Cancer Detection AI",
+        theme=gr.themes.Soft(primary_hue="emerald", neutral_hue="gray"),
+        js=force_light_js,
+    ) as demo:
         # Header
         gr.Markdown(
             """
@@ -328,7 +448,38 @@ def create_demo_interface():
             </div>
             """
         )
-        
+
+        # Methodology highlight — Phase 3 (Stacked Ensemble) and Phase 4 (Grad-CAM XAI)
+        # are this project's core contribution, so they are visually emphasized.
+        gr.HTML(
+            """
+            <div class="phase-grid">
+                <div class="phase-card">
+                    <div class="phase-num">1</div>
+                    <div class="phase-title">Data Acquisition<br>&amp; Preprocessing</div>
+                    <div class="phase-desc">Labeling and image preprocessing of CT scans</div>
+                </div>
+                <div class="phase-card">
+                    <div class="phase-num">2</div>
+                    <div class="phase-title">Transfer Learning<br>Feature Extraction</div>
+                    <div class="phase-desc">EfficientNet-B0, DenseNet-121, ResNet-50 backbones</div>
+                </div>
+                <div class="phase-card highlight">
+                    <div class="phase-num">3</div>
+                    <div class="phase-title">Stacked Ensemble<br>Model</div>
+                    <div class="phase-desc">XGBoost meta-learner combines all 3 base models</div>
+                    <div class="core-badge">THIS DEMO</div>
+                </div>
+                <div class="phase-card highlight">
+                    <div class="phase-num">4</div>
+                    <div class="phase-title">Explainable AI<br>(Grad-CAM)</div>
+                    <div class="phase-desc">Visual heatmap showing why the model decided</div>
+                    <div class="core-badge">THIS DEMO</div>
+                </div>
+            </div>
+            """
+        )
+
         with gr.Row():
             # Left column: Input
             with gr.Column(scale=1):
