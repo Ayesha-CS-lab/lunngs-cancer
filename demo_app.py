@@ -48,8 +48,13 @@ def load_meta_learner(checkpoint_dir='checkpoints'):
         META_LEARNER_CACHE[checkpoint_dir] = None
         return None
 
-    meta_learner = joblib.load(meta_path)
-    print(f"[OK] Loaded trained XGBoost meta-learner from {meta_path}")
+    try:
+        meta_learner = joblib.load(meta_path)
+        print(f"[OK] Loaded trained XGBoost meta-learner from {meta_path}")
+    except Exception as e:
+        print(f"[!] Could not load meta-learner ({e}); falling back to probability averaging")
+        meta_learner = None
+
     META_LEARNER_CACHE[checkpoint_dir] = meta_learner
     return meta_learner
 
@@ -133,40 +138,17 @@ def predict_single_model(image, model_name, show_gradcam=True, device='cuda'):
                 print(f"Grad-CAM generation failed: {e}")
                 gradcam_image = processed_image
         
-        # Create result text
-        result_class = "🔴 CANCER DETECTED" if pred_class == 1 else "✅ NO CANCER DETECTED"
-        confidence_text = f"{conf_value * 100:.1f}%"
-        
-        # Detailed probabilities
-        prob_text = f"""
-### Prediction Details
+        # Build the professional HTML results panel
+        model_label = f"{model_name.upper()} &middot; single model"
+        result_html = build_result_html(pred_class, conf_value, probs, model_label)
 
-**Model:** {model_name.upper()}
+        return gradcam_image if show_gradcam else processed_image, result_html
 
-**Diagnosis:** {result_class}
-
-**Confidence:** {confidence_text}
-
----
-
-**Class Probabilities:**
-- No Cancer: {probs[0]*100:.2f}%
-- Cancer: {probs[1]*100:.2f}%
-
----
-
-**Recommendation:**
-{get_recommendation(pred_class, conf_value)}
-        """
-        
-        return gradcam_image if show_gradcam else processed_image, prob_text
-        
     except Exception as e:
-        error_msg = f"❌ Error during prediction: {str(e)}"
-        print(error_msg)
+        print(f"Error during prediction: {e}")
         import traceback
         traceback.print_exc()
-        return None, error_msg
+        return None, _error_html(str(e))
 
 
 def predict_ensemble(image, show_gradcam=True, device='cuda'):
@@ -226,74 +208,158 @@ def predict_ensemble(image, show_gradcam=True, device='cuda'):
                 print(f"Ensemble Grad-CAM failed: {e}")
                 gradcam_image = processed_image
         
-        # Create result text
-        result_class = "🔴 CANCER DETECTED" if pred_class == 1 else "✅ NO CANCER DETECTED"
-        confidence_text = f"{confidence * 100:.1f}%"
-        
-        # Detailed results
-        prob_text = f"""
-### Ensemble Prediction
+        # Build the professional HTML results panel
+        individual = [(name.upper(), all_probs[i]) for i, name in enumerate(model_names)]
+        model_label = ensemble_method
+        result_html = build_result_html(pred_class, confidence, avg_probs, model_label, individual=individual)
 
-**Model:** {ensemble_method}
+        return gradcam_image if show_gradcam else processed_image, result_html
 
-**Diagnosis:** {result_class}
-
-**Confidence:** {confidence_text}
-
----
-
-**Class Probabilities:**
-- No Cancer: {avg_probs[0]*100:.2f}%
-- Cancer: {avg_probs[1]*100:.2f}%
-
----
-
-**Individual Model Predictions:**
-"""
-        for i, model_name in enumerate(model_names):
-            prob_text += f"\n- {model_name.upper()}: No Cancer {all_probs[i][0]*100:.1f}% | Cancer {all_probs[i][1]*100:.1f}%"
-        
-        prob_text += f"""
-
----
-
-**Recommendation:**
-{get_recommendation(pred_class, confidence)}
-        """
-        
-        return gradcam_image if show_gradcam else processed_image, prob_text
-        
     except Exception as e:
-        error_msg = f"❌ Error during ensemble prediction: {str(e)}"
-        print(error_msg)
+        print(f"Error during ensemble prediction: {e}")
         import traceback
         traceback.print_exc()
-        return None, error_msg
+        return None, _error_html(str(e))
+
+
+def _empty_state_html(message="Upload a CT scan and run the analysis to see results here."):
+    """Render the idle/awaiting state for the results panel."""
+    return f"""
+    <div class="result-panel empty-state">
+      <div class="empty-icon">&#129658;</div>
+      <div class="empty-title">Awaiting Analysis</div>
+      <div class="empty-text">{message}</div>
+      <div class="empty-meta">
+        <span>Supported: PNG &middot; JPEG &middot; DICOM</span>
+        <span>Lung-window CT preferred</span>
+      </div>
+    </div>
+    """
+
+
+def _error_html(message):
+    """Render an error state in the results panel."""
+    return f"""
+    <div class="result-panel">
+      <div class="diagnosis-banner" style="background:#fffbeb;border-color:#f59e0b;">
+        <div class="diagnosis-icon" style="color:#f59e0b;">&#9888;</div>
+        <div class="diagnosis-main">
+          <div class="diagnosis-verdict" style="color:#b45309;">Analysis Failed</div>
+          <div class="diagnosis-sub">{message}</div>
+        </div>
+      </div>
+    </div>
+    """
 
 
 def get_recommendation(pred_class, confidence):
-    """Generate clinical recommendation based on prediction."""
+    """Generate a clinical recommendation (title, body) based on prediction."""
     if pred_class == 1:  # Cancer
         if confidence > 0.9:
-            return "⚠️ **HIGH CONFIDENCE CANCER DETECTION** - Immediate clinical review recommended. Schedule biopsy and comprehensive diagnostic workup."
+            return ("High-confidence cancer indication",
+                    "Immediate clinical review recommended. Schedule biopsy and comprehensive diagnostic workup.")
         elif confidence > 0.7:
-            return "⚠️ **MODERATE CONFIDENCE CANCER DETECTION** - Clinical review recommended. Consider additional imaging and specialist consultation."
+            return ("Moderate-confidence cancer indication",
+                    "Clinical review recommended. Consider additional imaging and specialist consultation.")
         else:
-            return "⚠️ **LOW CONFIDENCE CANCER DETECTION** - Additional imaging recommended. Consider repeat scan and specialist review."
+            return ("Low-confidence cancer indication",
+                    "Additional imaging recommended. Consider a repeat scan and specialist review.")
     else:  # No cancer
         if confidence > 0.9:
-            return "✅ **HIGH CONFIDENCE NO CANCER** - Continue routine screening as recommended by physician."
+            return ("High-confidence negative result",
+                    "Continue routine screening as recommended by the supervising physician.")
         elif confidence > 0.7:
-            return "✅ **MODERATE CONFIDENCE NO CANCER** - Consider follow-up imaging in 6-12 months."
+            return ("Moderate-confidence negative result",
+                    "Consider follow-up imaging in 6-12 months.")
         else:
-            return "⚠️ **LOW CONFIDENCE** - Additional imaging recommended to rule out abnormalities."
+            return ("Low-confidence result",
+                    "Additional imaging recommended to rule out abnormalities.")
+
+
+def _confidence_band(confidence):
+    """Return a short qualitative label for a confidence value."""
+    if confidence > 0.9:
+        return "High"
+    if confidence > 0.7:
+        return "Moderate"
+    return "Low"
+
+
+def build_result_html(pred_class, confidence, probs, model_label, individual=None):
+    """Render a clean, professional HTML results panel shared by all prediction paths."""
+    is_cancer = pred_class == 1
+    accent = "#dc2626" if is_cancer else "#059669"
+    soft_bg = "#fef2f2" if is_cancer else "#ecfdf5"
+    verdict = "Cancer Indicated" if is_cancer else "No Cancer Detected"
+    icon = "&#9888;" if is_cancer else "&#10003;"
+    no_cancer_pct = probs[0] * 100
+    cancer_pct = probs[1] * 100
+    rec_title, rec_body = get_recommendation(pred_class, confidence)
+    band = _confidence_band(confidence)
+
+    # Diagnosis banner
+    html = f"""
+    <div class="result-panel">
+      <div class="diagnosis-banner" style="background:{soft_bg};border-color:{accent};">
+        <div class="diagnosis-icon" style="color:{accent};">{icon}</div>
+        <div class="diagnosis-main">
+          <div class="diagnosis-verdict" style="color:{accent};">{verdict}</div>
+          <div class="diagnosis-sub">{model_label}</div>
+        </div>
+        <div class="diagnosis-confidence">
+          <div class="conf-value" style="color:{accent};">{confidence*100:.1f}%</div>
+          <div class="conf-label">{band} confidence</div>
+        </div>
+      </div>
+
+      <div class="result-section-title">Class Probabilities</div>
+      <div class="prob-row">
+        <div class="prob-name">No Cancer</div>
+        <div class="prob-track"><div class="prob-fill" style="width:{no_cancer_pct:.1f}%;background:#059669;"></div></div>
+        <div class="prob-pct">{no_cancer_pct:.1f}%</div>
+      </div>
+      <div class="prob-row">
+        <div class="prob-name">Cancer</div>
+        <div class="prob-track"><div class="prob-fill" style="width:{cancer_pct:.1f}%;background:#dc2626;"></div></div>
+        <div class="prob-pct">{cancer_pct:.1f}%</div>
+      </div>
+    """
+
+    # Per-model breakdown (ensemble only)
+    if individual:
+        html += '<div class="result-section-title">Base Model Breakdown</div><div class="model-table">'
+        for name, p in individual:
+            m_cancer = p[1] * 100
+            m_pred = "Cancer" if p[1] >= p[0] else "No Cancer"
+            m_color = "#dc2626" if p[1] >= p[0] else "#059669"
+            html += f"""
+            <div class="model-row">
+              <div class="model-name">{name}</div>
+              <div class="model-track"><div class="model-fill" style="width:{m_cancer:.1f}%;"></div></div>
+              <div class="model-verdict" style="color:{m_color};">{m_pred} &middot; {max(p)*100:.0f}%</div>
+            </div>
+            """
+        html += '</div>'
+
+    # Recommendation
+    html += f"""
+      <div class="rec-box" style="border-left-color:{accent};">
+        <div class="rec-title">Clinical Note &mdash; {rec_title}</div>
+        <div class="rec-body">{rec_body}</div>
+      </div>
+      <div class="result-disclaimer">
+        Research prototype output &mdash; not a medical diagnosis. Confirm all findings with a qualified radiologist.
+      </div>
+    </div>
+    """
+    return html
 
 
 def analyze_image(image, model_choice, show_gradcam):
     """Main analysis function called by Gradio interface."""
     if image is None:
-        return None, "⚠️ Please upload an image first."
-    
+        return None, _empty_state_html("Please upload a CT scan image to begin analysis.")
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     if model_choice == "Ensemble (Recommended)":
@@ -305,121 +371,117 @@ def analyze_image(image, model_choice, show_gradcam):
 
 def create_demo_interface():
     """Create the Gradio interface."""
-    
-    # Minimalist light UI
+
     custom_css = """
     :root, .gradio-container { color-scheme: light !important; }
     body, .gradio-container {
-        background: #ffffff !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1300px !important;
+        background: #f6f8fa !important;
+        font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+        max-width: 1240px !important;
         color: #1f2937 !important;
     }
-    .gr-box, .block, .form, .panel {
-        background: #ffffff !important;
-        border: 1px solid #e5e7eb !important;
-        box-shadow: none !important;
-    }
-    .gr-button-primary, button.primary {
-        background: #10b981 !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 6px !important;
-        box-shadow: none !important;
-    }
-    .gr-button-primary:hover, button.primary:hover {
-        background: #059669 !important;
-    }
-    .gr-button-secondary, button.secondary {
-        background: #ffffff !important;
-        color: #374151 !important;
-        border: 1px solid #d1d5db !important;
-        border-radius: 6px !important;
-    }
-    h1, h2, h3 {
-        color: #111827 !important;
-        font-weight: 600 !important;
-    }
-    h1 {
-        text-align: center;
-        font-size: 1.8rem !important;
-        margin-bottom: 0.25rem !important;
-    }
-    .subtitle {
-        text-align: center;
-        color: #6b7280;
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .warning-box {
-        background: #fafafa;
-        border: 1px solid #e5e7eb;
-        border-left: 3px solid #f59e0b;
-        padding: 0.75rem 1rem;
-        margin: 1rem 0;
-        border-radius: 6px;
-        color: #4b5563;
-        font-size: 0.9rem;
-    }
-    .phase-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-        margin: 1.5rem 0 2rem 0;
-    }
-    .phase-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 1.1rem 1rem;
-        text-align: center;
-    }
-    .phase-card .phase-num {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: #f3f4f6;
-        color: #4b5563;
-        font-weight: 700;
+    footer { display: none !important; }
+
+    /* ---------- App header ---------- */
+    .app-header {
+        background: linear-gradient(135deg, #0f766e 0%, #047857 100%);
+        border-radius: 14px;
+        padding: 1.6rem 1.8rem;
+        color: #ffffff;
         margin-bottom: 0.5rem;
-        font-size: 0.9rem;
+        box-shadow: 0 6px 20px rgba(4,120,87,0.18);
     }
-    .phase-card .phase-title {
-        font-weight: 600;
-        color: #1f2937;
-        font-size: 0.95rem;
-        margin-bottom: 0.25rem;
+    .app-header .brand {
+        display: flex; align-items: center; gap: 0.75rem;
     }
-    .phase-card .phase-desc {
-        color: #6b7280;
-        font-size: 0.8rem;
-        line-height: 1.3;
+    .app-header .brand-logo {
+        font-size: 1.9rem; line-height: 1;
+        background: rgba(255,255,255,0.15);
+        width: 52px; height: 52px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
     }
-    .phase-card.highlight {
-        background: #ecfdf5;
-        border: 1.5px solid #10b981;
+    .app-header h1 {
+        font-size: 1.55rem !important; font-weight: 700 !important;
+        margin: 0 !important; color: #ffffff !important; text-align: left !important;
     }
-    .phase-card.highlight .phase-num {
-        background: #10b981;
-        color: #ffffff;
+    .app-header .tagline {
+        margin: 0.15rem 0 0; font-size: 0.92rem; color: #d1fae5; font-weight: 400;
     }
-    .phase-card.highlight .phase-title {
-        color: #047857;
+    .app-header .header-stats {
+        display: flex; gap: 2rem; margin-top: 1.1rem;
+        border-top: 1px solid rgba(255,255,255,0.18); padding-top: 0.9rem;
     }
-    .core-badge {
-        display: inline-block;
-        background: #10b981;
-        color: #ffffff;
-        font-size: 0.65rem;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        padding: 0.15rem 0.5rem;
-        border-radius: 999px;
-        margin-top: 0.4rem;
+    .app-header .stat .num { font-size: 1.25rem; font-weight: 700; }
+    .app-header .stat .lbl { font-size: 0.72rem; color: #a7f3d0; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ---------- Disclaimer ---------- */
+    .warning-box {
+        background: #fffbeb; border: 1px solid #fde68a;
+        border-left: 4px solid #f59e0b;
+        padding: 0.7rem 1rem; margin: 0.75rem 0 1.25rem;
+        border-radius: 8px; color: #92400e; font-size: 0.85rem;
     }
+
+    /* ---------- Section cards ---------- */
+    .panel-card { background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:1.25rem 1.25rem 1.4rem; box-shadow:0 1px 3px rgba(0,0,0,0.04); height:100%; box-sizing:border-box; }
+    .card-head { display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:1.02rem; color:#111827; margin-bottom:0.9rem; }
+    .card-head .dot { width:8px; height:8px; border-radius:50%; background:#10b981; }
+
+    /* Strip Gradio's default block chrome from the heading wrappers */
+    .card-head-wrap { background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; }
+    /* Pad the result text column so the diagnosis panel isn't flush to the edge */
+    .result-col { padding:0.25rem 0.75rem 0.25rem 1.25rem !important; }
+    .result-col .block { background:transparent !important; border:none !important; box-shadow:none !important; }
+
+    .gr-button-primary, button.primary {
+        background:#059669 !important; color:#fff !important; border:none !important;
+        border-radius:8px !important; font-weight:600 !important; box-shadow:none !important;
+    }
+    .gr-button-primary:hover, button.primary:hover { background:#047857 !important; }
+    .gr-button-secondary, button.secondary {
+        background:#fff !important; color:#374151 !important; border:1px solid #d1d5db !important; border-radius:8px !important;
+    }
+    h3 { color:#111827 !important; font-weight:600 !important; }
+
+    /* ---------- Results panel ---------- */
+    .result-panel { font-family:'Inter','Segoe UI',sans-serif; }
+    .diagnosis-banner {
+        display:flex; align-items:center; gap:1rem;
+        border:1.5px solid; border-radius:12px; padding:1rem 1.2rem; margin-bottom:1.3rem;
+    }
+    .diagnosis-icon { font-size:2rem; line-height:1; }
+    .diagnosis-main { flex:1; }
+    .diagnosis-verdict { font-size:1.25rem; font-weight:700; }
+    .diagnosis-sub { font-size:0.8rem; color:#6b7280; margin-top:0.15rem; }
+    .diagnosis-confidence { text-align:right; }
+    .diagnosis-confidence .conf-value { font-size:1.6rem; font-weight:800; line-height:1; }
+    .diagnosis-confidence .conf-label { font-size:0.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:0.04em; }
+
+    .result-section-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin:1.1rem 0 0.6rem; }
+    .prob-row { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.55rem; }
+    .prob-name { width:90px; font-size:0.85rem; color:#374151; font-weight:500; }
+    .prob-track { flex:1; height:10px; background:#f3f4f6; border-radius:6px; overflow:hidden; }
+    .prob-fill { height:100%; border-radius:6px; transition:width .4s ease; }
+    .prob-pct { width:54px; text-align:right; font-size:0.85rem; font-weight:600; color:#111827; }
+
+    .model-table { display:flex; flex-direction:column; gap:0.5rem; }
+    .model-row { display:flex; align-items:center; gap:0.75rem; }
+    .model-name { width:130px; font-size:0.82rem; font-weight:600; color:#374151; }
+    .model-track { flex:1; height:8px; background:#f3f4f6; border-radius:6px; overflow:hidden; }
+    .model-fill { height:100%; background:#94a3b8; border-radius:6px; }
+    .model-verdict { width:120px; text-align:right; font-size:0.8rem; font-weight:600; }
+
+    .rec-box { background:#f9fafb; border-left:4px solid #10b981; border-radius:8px; padding:0.85rem 1rem; margin-top:1.3rem; }
+    .rec-title { font-weight:700; font-size:0.9rem; color:#111827; margin-bottom:0.25rem; }
+    .rec-body { font-size:0.85rem; color:#4b5563; line-height:1.45; }
+    .result-disclaimer { font-size:0.72rem; color:#9ca3af; margin-top:1rem; text-align:center; }
+
+    /* ---------- Empty state ---------- */
+    .empty-state { text-align:center; padding:2.5rem 1rem; }
+    .empty-icon { font-size:2.6rem; margin-bottom:0.6rem; }
+    .empty-title { font-size:1.05rem; font-weight:700; color:#374151; }
+    .empty-text { font-size:0.88rem; color:#6b7280; margin:0.4rem 0 1.2rem; }
+    .empty-meta { display:flex; justify-content:center; gap:1.2rem; font-size:0.75rem; color:#9ca3af; }
     """
 
     force_light_js = """
@@ -429,251 +491,144 @@ def create_demo_interface():
     }
     """
 
+    device_label = 'GPU (CUDA)' if torch.cuda.is_available() else 'CPU'
+
     with gr.Blocks(
         css=custom_css,
-        title="Lung Cancer Detection AI",
+        title="LUNG CANCER DETECTION USING TRANSFERL EARNING AND GRAD-CAM VISUALIZATION",
         theme=gr.themes.Soft(primary_hue="emerald", neutral_hue="gray"),
         js=force_light_js,
     ) as demo:
-        # Header
-        gr.Markdown(
-            """
-            # 🏥 Lung Cancer Detection AI System
-            ### Advanced Deep Learning for Early Cancer Detection
-            
-            <div class="warning-box">
-            ⚠️ <b>MEDICAL DISCLAIMER:</b> This is a research prototype for demonstration purposes only. 
-            It is NOT FDA-approved and should NOT be used for actual medical diagnosis. 
-            Always consult with qualified healthcare professionals for medical decisions.
+        # ---------------- Header ----------------
+        gr.HTML(
+            f"""
+            <div class="app-header">
+                <div class="brand">
+                    <div class="brand-logo">&#129728;</div>
+                    <div>
+                        <h1>LUNG CANCER DETECTION USING TRANSFERL EARNING AND GRAD-CAM VISUALIZATION</h1>
+                        <p class="tagline">CT-scan screening with a stacked CNN ensemble and Grad-CAM explainability</p>
+                    </div>
+                </div>
+                <div class="header-stats">
+                    <div class="stat"><div class="num">3</div><div class="lbl">CNN Backbones</div></div>
+                    <div class="stat"><div class="num">XGBoost</div><div class="lbl">Meta-Learner</div></div>
+                    <div class="stat"><div class="num">Grad-CAM</div><div class="lbl">Explainability</div></div>
+                    <div class="stat"><div class="num">{device_label}</div><div class="lbl">Compute</div></div>
+                </div>
             </div>
             """
         )
 
-        # Methodology highlight — Phase 3 (Stacked Ensemble) and Phase 4 (Grad-CAM XAI)
-        # are this project's core contribution, so they are visually emphasized.
         gr.HTML(
             """
-            <div class="phase-grid">
-                <div class="phase-card">
-                    <div class="phase-num">1</div>
-                    <div class="phase-title">Data Acquisition<br>&amp; Preprocessing</div>
-                    <div class="phase-desc">Labeling and image preprocessing of CT scans</div>
-                </div>
-                <div class="phase-card">
-                    <div class="phase-num">2</div>
-                    <div class="phase-title">Transfer Learning<br>Feature Extraction</div>
-                    <div class="phase-desc">EfficientNet-B0, DenseNet-121, ResNet-50 backbones</div>
-                </div>
-                <div class="phase-card highlight">
-                    <div class="phase-num">3</div>
-                    <div class="phase-title">Stacked Ensemble<br>Model</div>
-                    <div class="phase-desc">XGBoost meta-learner combines all 3 base models</div>
-                    <div class="core-badge">THIS DEMO</div>
-                </div>
-                <div class="phase-card highlight">
-                    <div class="phase-num">4</div>
-                    <div class="phase-title">Explainable AI<br>(Grad-CAM)</div>
-                    <div class="phase-desc">Visual heatmap showing why the model decided</div>
-                    <div class="core-badge">THIS DEMO</div>
-                </div>
+            <div class="warning-box">
+            <b>Medical disclaimer:</b> Research prototype for demonstration only. Not FDA-approved and not for
+            clinical diagnosis. Always consult a qualified healthcare professional.
             </div>
             """
         )
 
-        with gr.Row():
-            # Left column: Input
+        # ===== Row 1: Upload (left) + Model & Actions (right) =====
+        with gr.Row(equal_height=True):
+            # ---------------- Left: Upload card ----------------
             with gr.Column(scale=1):
-                gr.Markdown("### 📤 Upload CT Scan")
-                
-                image_input = gr.Image(
-                    label="CT Scan Image",
-                    type="pil",
-                    height=400
-                )
-                
-                gr.Markdown("### ⚙️ Analysis Settings")
-                
-                model_choice = gr.Radio(
-                    choices=[
-                        "Ensemble (Recommended)",
-                        "EfficientNet-B0",
-                        "DenseNet-121",
-                        "ResNet-50"
-                    ],
-                    value="Ensemble (Recommended)",
-                    label="Model Selection",
-                    info="Ensemble combines all models for best accuracy"
-                )
-                
-                show_gradcam = gr.Checkbox(
-                    label="Show Grad-CAM Visualization",
-                    value=True,
-                    info="Highlights regions influencing the prediction"
-                )
-                
-                analyze_btn = gr.Button(
-                    "🔬 Analyze CT Scan",
-                    variant="primary",
-                    size="lg"
-                )
-                
-                clear_btn = gr.Button("🔄 Clear", variant="secondary")
-                
-                # Example images
-                gr.Markdown("### 📋 Example Images")
-                gr.Examples(
-                    examples=[
-                        ["data/demo_cnn/train/cancer/img_000.png"] if Path("data/demo_cnn/train/cancer/img_000.png").exists() else None,
-                        ["data/demo_cnn/train/no_cancer/img_000.png"] if Path("data/demo_cnn/train/no_cancer/img_000.png").exists() else None,
-                    ],
-                    inputs=image_input,
-                    label="Click to load example"
-                )
-            
-            # Right column: Results
+                with gr.Group(elem_classes="panel-card"):
+                    gr.HTML('<div class="card-head"><span class="dot"></span>Upload CT Scan</div>', elem_classes="card-head-wrap")
+
+                    image_input = gr.Image(
+                        label="Drop a CT scan or click to browse",
+                        type="pil",
+                        height=420,
+                        sources=["upload", "clipboard"],
+                    )
+
+            # ---------------- Right: Model & Actions card ----------------
             with gr.Column(scale=1):
-                gr.Markdown("### 📊 Analysis Results")
-                
-                result_image = gr.Image(
-                    label="Analyzed Image (with Grad-CAM)",
-                    type="numpy",
-                    height=400
-                )
-                
-                result_text = gr.Markdown(
-                    """
-                    ### Awaiting Analysis
-                    
-                    Upload a CT scan image and click "Analyze" to begin.
-                    
-                    **Supported formats:** PNG, JPEG, DICOM
-                    
-                    **Image requirements:**
-                    - Clear CT scan image
-                    - Lung window preferred
-                    - Good contrast and resolution
-                    """
-                )
-        
-        # Information section
-        with gr.Accordion("ℹ️ About This System", open=False):
+                with gr.Group(elem_classes="panel-card"):
+                    gr.HTML('<div class="card-head"><span class="dot"></span>Model &amp; Analysis</div>', elem_classes="card-head-wrap")
+
+                    model_choice = gr.Radio(
+                        choices=[
+                            "Ensemble (Recommended)",
+                            "EfficientNet-B0",
+                            "DenseNet-121",
+                            "ResNet-50",
+                        ],
+                        value="Ensemble (Recommended)",
+                        label="Model",
+                        info="The ensemble combines all three backbones via the XGBoost meta-learner.",
+                    )
+
+                    show_gradcam = gr.Checkbox(
+                        label="Generate Grad-CAM heatmap",
+                        value=True,
+                        info="Overlays the regions that drove the prediction.",
+                    )
+
+                    with gr.Row():
+                        analyze_btn = gr.Button("Analyze Scan", variant="primary", size="lg", scale=2)
+                        clear_btn = gr.Button("Clear", variant="secondary", scale=1)
+
+        # ===== Row 2: Analysis results (full width below) =====
+        with gr.Group(elem_classes="panel-card"):
+            gr.HTML('<div class="card-head"><span class="dot"></span>Analysis Results</div>', elem_classes="card-head-wrap")
+
+            with gr.Row(equal_height=False):
+                with gr.Column(scale=1):
+                    result_image = gr.Image(
+                        label="Grad-CAM overlay",
+                        type="numpy",
+                        height=360,
+                    )
+                with gr.Column(scale=1, elem_classes="result-col"):
+                    result_text = gr.HTML(value=_empty_state_html())
+
+        # ---------------- About (condensed) ----------------
+        with gr.Accordion("About this system", open=False):
             gr.Markdown(
                 """
-                ## System Architecture
-                
-                This AI system uses a **stacked ensemble** approach combining three state-of-the-art deep learning models:
-                
-                ### Base Models
-                1. **EfficientNet-B0**: Efficient and accurate (5.3M parameters)
-                2. **DenseNet-121**: Feature reuse architecture (8M parameters)  
-                3. **ResNet-50**: Deep residual learning (25.6M parameters)
-                
-                ### Key Features
-                - ✅ **Transfer Learning**: Models pretrained on ImageNet
-                - ✅ **Two-Phase Training**: Frozen backbone then fine-tuning
-                - ✅ **Class Imbalance Handling**: Weighted loss functions
-                - ✅ **Data Augmentation**: Medical-appropriate transforms + GAN
-                - ✅ **Explainability**: Grad-CAM visual explanations
-                - ✅ **Ensemble Learning**: Meta-learner combines predictions
-                
-                ### Performance Metrics (Expected)
-                - **Individual Models**: 92-95% accuracy
-                - **Ensemble**: 94-96% accuracy
-                - **Sensitivity (Cancer Detection)**: 93-96%
-                - **Specificity (No Cancer)**: 92-95%
-                
-                ### Grad-CAM Visualization
-                Grad-CAM (Gradient-weighted Class Activation Mapping) highlights the regions of the CT scan that most influenced the model's decision. 
-                Red regions indicate high importance, helping clinicians understand and validate the AI's reasoning.
-                
-                ### Medical AI Best Practices
-                - Patient-level data splitting (prevents leakage)
-                - Stratified K-fold cross-validation
-                - Comprehensive evaluation metrics
-                - Visual explainability for clinical trust
-                
-                ### Limitations
-                - Trained on limited dataset (demonstration)
-                - Not validated on diverse populations
-                - Requires clinical interpretation
-                - Should not replace expert radiologist review
+                **Pipeline.** Each CT scan is resized to 224×224 and passed through three ImageNet-pretrained
+                backbones — **EfficientNet-B0**, **DenseNet-121** and **ResNet-50**. Their class probabilities are
+                stacked and combined by a trained **XGBoost meta-learner** to produce the final prediction.
+
+                **Explainability.** **Grad-CAM** highlights the image regions most responsible for the decision,
+                giving a visual check on what the model focused on.
+
+                **Limitations.** Trained on a limited demonstration dataset, not validated across diverse
+                populations, and intended to support — never replace — expert radiologist review.
                 """
             )
-        
-        with gr.Accordion("🛠️ Technical Details", open=False):
-            gr.Markdown(
-                """
-                ## Model Information
-                
-                ### Device Status
-                - **PyTorch Version**: """ + torch.__version__ + """
-                - **CUDA Available**: """ + str(torch.cuda.is_available()) + """
-                - **Device**: """ + ('CUDA (GPU)' if torch.cuda.is_available() else 'CPU') + """
-                
-                ### Model Loading
-                Models are loaded on-demand and cached for performance. First prediction may take longer.
-                
-                ### Image Processing Pipeline
-                1. Resize to 224×224 pixels
-                2. Normalize to ImageNet statistics
-                3. Convert to PyTorch tensor
-                4. Forward pass through model
-                5. Softmax activation for probabilities
-                6. Optional: Generate Grad-CAM heatmap
-                
-                ### Inference Time
-                - Single model: ~50-100ms (GPU) / 500-1000ms (CPU)
-                - Ensemble: ~150-300ms (GPU) / 1500-3000ms (CPU)
-                - Grad-CAM: +30-50ms
-                
-                ### File Structure
-                ```
-                lung_cancer_ai/
-                ├── src/
-                │   ├── models/          # CNN architectures
-                │   ├── ensemble/        # Stacking ensemble
-                │   ├── explainability/  # Grad-CAM
-                │   └── ...
-                ├── checkpoints/         # Trained models
-                ├── configs/             # Configuration
-                └── demo_app.py         # This application
-                ```
-                """
-            )
-        
-        # Footer
-        gr.Markdown(
+
+        # ---------------- Footer ----------------
+        gr.HTML(
             """
-            ---
-            
-            <div style="text-align: center; color: #6b7280; font-size: 0.9rem;">
-            <b>Lung Cancer Detection AI System</b> | Research Prototype v1.0<br>
-            Built with PyTorch, Gradio, EfficientNet, DenseNet, ResNet<br>
-            For research and educational purposes only | Not for clinical use
+            <div style="text-align:center;color:#9ca3af;font-size:0.8rem;margin-top:1rem;">
+            LUNG CANCER DETECTION USING TRANSFER LEARNING AND GRAD-CAM VISUALIZATION &middot; Research prototype v1.0 &middot; PyTorch · Gradio · XGBoost &middot; Not for clinical use
             </div>
             """
         )
-        
-        # Event handlers
+
+        # ---------------- Events ----------------
         analyze_btn.click(
             fn=analyze_image,
             inputs=[image_input, model_choice, show_gradcam],
-            outputs=[result_image, result_text]
+            outputs=[result_image, result_text],
         )
-        
+
         clear_btn.click(
-            fn=lambda: (None, None, "### Awaiting Analysis\n\nUpload a CT scan image and click 'Analyze' to begin."),
+            fn=lambda: (None, None, _empty_state_html()),
             inputs=None,
-            outputs=[image_input, result_image, result_text]
+            outputs=[image_input, result_image, result_text],
         )
-    
+
     return demo
 
 
 def main():
     """Launch the demo application."""
     print("="*70)
-    print("LUNG CANCER DETECTION AI - DEMO APPLICATION")
+    print(" LUNG CANCER DETECTION USING TRANSFER LEARNING AND GRAD-CAM VISUALIZATION - DEMO APPLICATION")
     print("="*70)
     print("\nInitializing...")
     
