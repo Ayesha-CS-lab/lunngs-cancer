@@ -49,7 +49,6 @@ experiments/*
 
 # IDE - never commit editor config (prevents malicious task injection)
 .idea/
-.vscode/
 *.swp
 *.swo
 *~
